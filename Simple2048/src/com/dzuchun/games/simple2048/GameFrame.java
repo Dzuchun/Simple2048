@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
@@ -20,9 +21,9 @@ public class GameFrame extends JFrame
 	private static int ANIMATION_TIME_MILLIS = 1000;
 	private static int FRAMES_PER_SECOND = 60;
 	
-	JPanel canvas;
+	JLayeredPane canvas;
 	private int size;
-	JLayeredPane mainPanel;
+	JPanel mainPanel;
 	private Vector<GraphicalPlate> plates;
 	private AnimationThread animationThread;
 	boolean animationDrawn;
@@ -35,7 +36,7 @@ public class GameFrame extends JFrame
 		
 		this.animationThread = new AnimationThread(this);
 		this.animationDrawn = false;
-		class GamePanel extends JPanel
+		class GamePanel extends JLayeredPane
 		{
 			private static final long serialVersionUID = 1L;
 			
@@ -59,14 +60,14 @@ public class GameFrame extends JFrame
 				{
 					plate.repaint();
 				}
+				Toolkit.getDefaultToolkit().sync();
 			}
 		}
-		this.mainPanel = new JLayeredPane();
+		this.mainPanel = new JPanel();
 		this.mainPanel.setLayout(null);
 		this.add(this.mainPanel);
 		this.canvas = new GamePanel();
 		this.mainPanel.add(this.canvas);
-		this.mainPanel.setLayer(this.canvas, 1);
 		this.setSize(300, 300);
 		this.setVisible(true);
 	}
@@ -76,20 +77,24 @@ public class GameFrame extends JFrame
 		GraphicalPlate plate = new GraphicalPlate(worth);
 		plate.setPos(pos);
 		this.plates.add(plate);
-		this.mainPanel.add(plate);
-		this.mainPanel.setLayer(plate, 2);
+		this.canvas.add(plate);
+		this.canvas.setLayer(plate, 2);
 		this.repaint();
 	}
 	public void addPlate(GraphicalPlate plate)
 	{
 		//TODO check if plate exists
 		this.plates.add(plate);
-		this.mainPanel.add(plate);
-		this.mainPanel.setLayer(plate, 2);
+		this.canvas.add(plate);
+		this.canvas.setLayer(plate, 2);
 		this.repaint();
 	}
 	public void performAnimation (int delay)
 	{
+		if (animationDrawn)
+		{
+			return;
+		}
 		this.animationThread.performAnimation(delay, GraphicalPlate.getScheduledPlates());
 	}
 	public static int getPlateSize() 
@@ -100,16 +105,19 @@ public class GameFrame extends JFrame
 	{
 		PLATE_SIZE = pLATE_SIZE;
 	}
-	public static int getFRAMES_PER_SECOND() {
+	public static int getFRAMES_PER_SECOND() 
+	{
 		return FRAMES_PER_SECOND;
 	}
-	public static void setFRAMES_PER_SECOND(int fRAMES_PER_SECOND) {
+	public static void setFRAMES_PER_SECOND(int fRAMES_PER_SECOND) 
+	{
 		FRAMES_PER_SECOND = fRAMES_PER_SECOND;
 	}
 	public static int getANIMATION_TIME_MILLIS() {
 		return ANIMATION_TIME_MILLIS;
 	}
-	public static void setANIMATION_TIME_MILLIS(int aNIMATION_TIME_MILLIS) {
+	public static void setANIMATION_TIME_MILLIS(int aNIMATION_TIME_MILLIS) 
+	{
 		ANIMATION_TIME_MILLIS = aNIMATION_TIME_MILLIS;
 	}
 	public void paint(Graphics g)
@@ -129,6 +137,11 @@ class AnimationThread extends Timer
 			long currentTime = System.currentTimeMillis();
 			if (currentTime >= millisEnd)
 			{
+				frame.animationDrawn = false;
+				for(GraphicalPlate plate : scheduledPlates)
+				{
+					plate.discardSchedule();
+				}
 				cancel();
 				return;
 			}
@@ -136,9 +149,17 @@ class AnimationThread extends Timer
 			for(GraphicalPlate plate : scheduledPlates)
 			{
 				plate.moveToSheduled(part);
+				//plate.setLocation(plate.getPos());
+				frame.canvas.remove(plate);
+				frame.canvas.add(plate);
+				frame.canvas.setLayer(plate, 3);
+				
+				System.out.println("getpos returns " + plate.getPos().toString());
+				plate.repaint();
 			}
 			frame.canvas.repaint();
-			frame.mainPanel.repaint();
+			frame.repaint();
+			Toolkit.getDefaultToolkit().sync();
 		}
 	}
 	private GameFrame frame;
@@ -159,18 +180,7 @@ class AnimationThread extends Timer
 		this.millisEnd = this.millisStart + GameFrame.getANIMATION_TIME_MILLIS() + delay;
 		this.frameLength = 1000/GameFrame.getFRAMES_PER_SECOND();
 		this.scheduleAtFixedRate(new DrawFrame(), delay, this.frameLength);
-	}
-	@Override
-	public void scheduleAtFixedRate(TimerTask task, long delay, long period)
-	{
 		frame.animationDrawn = true;
-		super.scheduleAtFixedRate(task, delay, period);
-	}
-	@Override
-	public void cancel()
-	{
-		frame.animationDrawn = false;
-		super.cancel();
 	}
 }
 class GraphicalPlate extends JPanel
@@ -204,10 +214,11 @@ class GraphicalPlate extends JPanel
 		this.setBackground(colorForWorth(this.worth));
 		this.label.setBackground(colorForWorth(this.worth));
 		this.add(this.label);
+		this.scheduledPos = null;
 	}
 	public void setPos (Point newPos)
 	{
-		this.pos = new Point(newPos);
+		this.pos = newPos;
 		this.setBounds(this.pos.x, this.pos.y, GameFrame.getPlateSize(), GameFrame.getPlateSize());
 	}
 	public Point getPos()
@@ -218,6 +229,10 @@ class GraphicalPlate extends JPanel
 	private Point scheduledPos;
 	public void scheduleMove (Point newPos)
 	{
+		if (this.scheduledPos != null)
+		{
+			return;
+		}
 		this.scheduledPos = newPos;
 		this.beginPos = this.pos;
 		scheduledPlates.add(this);
@@ -233,7 +248,11 @@ class GraphicalPlate extends JPanel
 			return;
 		}
 		this.setPos(new Point((int)(part*(this.scheduledPos.x - this.beginPos.x) + this.beginPos.x), (int)(part*(this.scheduledPos.y - this.beginPos.y) + this.beginPos.y)));
-		System.out.println("changed pos to " + this.pos.toString());
+		//System.out.println("changed pos to " + this.pos.toString() + ", getpos returns - " + this.getPos().toString());
+	}
+	public void discardSchedule()
+	{
+		this.scheduledPos = null;
 	}
 	
 	@Override
