@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 
 public class GameFrame extends JFrame 
 {
+	private static final long serialVersionUID = 1L;
 	private static int PLATE_SIZE = 40;
 	private static int ANIMATION_TIME_MILLIS = 1000;
 	private static int FRAMES_PER_SECOND = 60;
@@ -122,9 +123,7 @@ public class GameFrame extends JFrame
 	}
 	public void paint(Graphics g)
 	{
-		super.paint(g);
-		this.canvas.repaint();
-		this.mainPanel.repaint();
+		//TODO DEFINE
 	}
 }
 class AnimationThread extends Timer
@@ -135,31 +134,7 @@ class AnimationThread extends Timer
 		public void run() 
 		{
 			long currentTime = System.currentTimeMillis();
-			if (currentTime >= millisEnd)
-			{
-				frame.animationDrawn = false;
-				for(GraphicalPlate plate : scheduledPlates)
-				{
-					plate.discardSchedule();
-				}
-				cancel();
-				return;
-			}
-			double part = ((double)currentTime - (double)millisStart)/((double)millisEnd - (double)millisStart);
-			for(GraphicalPlate plate : scheduledPlates)
-			{
-				plate.moveToSheduled(part);
-				//plate.setLocation(plate.getPos());
-				frame.canvas.remove(plate);
-				frame.canvas.add(plate);
-				frame.canvas.setLayer(plate, 3);
-				
-				System.out.println("getpos returns " + plate.getPos().toString());
-				plate.repaint();
-			}
-			frame.canvas.repaint();
-			frame.repaint();
-			Toolkit.getDefaultToolkit().sync();
+			//TODO DEFINE
 		}
 	}
 	private GameFrame frame;
@@ -181,86 +156,5 @@ class AnimationThread extends Timer
 		this.frameLength = 1000/GameFrame.getFRAMES_PER_SECOND();
 		this.scheduleAtFixedRate(new DrawFrame(), delay, this.frameLength);
 		frame.animationDrawn = true;
-	}
-}
-class GraphicalPlate extends JPanel
-{
-	private static final long serialVersionUID = 1L;
-	private static Color colorForWorth (int worth)
-	{
-		switch(worth)
-		{
-		case 2:
-			return(Color.YELLOW);
-		default:
-			return(null);
-		}
-	}
-	private static Vector<GraphicalPlate> scheduledPlates = new Vector<GraphicalPlate>(0);
-	public static Vector<GraphicalPlate> getScheduledPlates() 
-	{
-		return scheduledPlates;
-	}
-	
-	private int worth;
-	private Point pos;
-	private JLabel label;
-	public GraphicalPlate (int worth)
-	{
-		this.setSize(GameFrame.getPlateSize(), GameFrame.getPlateSize());
-		this.worth = worth;
-		this.label = new JLabel(new Integer(worth).toString());
-		this.label.setAlignmentX(CENTER_ALIGNMENT);
-		this.setBackground(colorForWorth(this.worth));
-		this.label.setBackground(colorForWorth(this.worth));
-		this.add(this.label);
-		this.scheduledPos = null;
-	}
-	public void setPos (Point newPos)
-	{
-		this.pos = newPos;
-		this.setBounds(this.pos.x, this.pos.y, GameFrame.getPlateSize(), GameFrame.getPlateSize());
-	}
-	public Point getPos()
-	{
-		return (this.pos);
-	}
-	private Point beginPos;
-	private Point scheduledPos;
-	public void scheduleMove (Point newPos)
-	{
-		if (this.scheduledPos != null)
-		{
-			return;
-		}
-		this.scheduledPos = newPos;
-		this.beginPos = this.pos;
-		scheduledPlates.add(this);
-	}
-	public void moveToSheduled (double part)
-	{
-		if (part > 1.0)
-		{
-			part = 1.0;
-		}
-		if (part< 0.0)
-		{
-			return;
-		}
-		this.setPos(new Point((int)(part*(this.scheduledPos.x - this.beginPos.x) + this.beginPos.x), (int)(part*(this.scheduledPos.y - this.beginPos.y) + this.beginPos.y)));
-		//System.out.println("changed pos to " + this.pos.toString() + ", getpos returns - " + this.getPos().toString());
-	}
-	public void discardSchedule()
-	{
-		this.scheduledPos = null;
-	}
-	
-	@Override
-	public void paintComponent (Graphics g)
-	{
-		super.paintComponent(g);
-		this.setBounds(this.pos.x, this.pos.y, GameFrame.getPlateSize(), GameFrame.getPlateSize());
-		this.setBorder(BorderFactory.createLineBorder(Color.black));
-		//TODO define
 	}
 }
