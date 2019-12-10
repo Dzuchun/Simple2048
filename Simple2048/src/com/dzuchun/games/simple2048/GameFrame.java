@@ -15,7 +15,7 @@ public class GameFrame extends JFrame
 {
 	private static final long serialVersionUID = 1L;
 	private static int PLATE_SIZE = 40;
-	private static long ANIMATION_TIME_MILLIS = 1000;
+	private static long ANIMATION_TIME_MILLIS = 700;
 	private static int FRAMES_PER_SECOND = 60;
 	
 	JLayeredPane canvas;
@@ -26,6 +26,9 @@ public class GameFrame extends JFrame
 	static final Object animationLock = new Object();
 	public GameFrame (int size)
 	{
+		realoadResources();
+		this.setTitle("Simple 2048");
+		this.setIconImage(ResourceLoader.plateWorth2);
 		this.size = size;
 		this.plates = new Vector<GraphicalPlate>(0);
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -47,6 +50,7 @@ public class GameFrame extends JFrame
 			public void paint(Graphics g)
 			{
 				super.paint(g);
+				//System.out.println("Painting canvas");
 				g.setColor(Color.GRAY);
 				for (int i=0; i<=size; i++)
 				{
@@ -56,6 +60,7 @@ public class GameFrame extends JFrame
 				AbstractAnimation.drawAll(g, System.currentTimeMillis());
 				for (GraphicalPlate plate : plates)
 				{
+					//System.out.println("Drawing plate " + plate.toString());
 					plate.draw(g);
 				}
 				Toolkit.getDefaultToolkit().sync();
@@ -79,15 +84,16 @@ public class GameFrame extends JFrame
 				while(true)
 				{
 					currentTime = System.currentTimeMillis();
-					canvas.repaint(frameLength);
 					sleep = frameLength - (System.currentTimeMillis() - currentTime);
-					if (AbstractAnimation.allComplete())
+					if (AbstractAnimation.isAllComplete())
 					{
 						try 
 						{
 							synchronized (animationLock) 
 							{
+								//System.out.println("Paused animation thread");
 								animationLock.wait();
+								//System.out.println("Resumed animation thread");
 							}
 						}
 						catch (InterruptedException e) 
@@ -108,6 +114,8 @@ public class GameFrame extends JFrame
 							e.printStackTrace();
 						}
 					}
+					//System.out.println("Invoking repaint fo canvas");
+					canvas.repaint(frameLength);
 				}
 			}
 		}
@@ -139,7 +147,7 @@ public class GameFrame extends JFrame
 	}
 	public static void drawAnimations()
 	{
-		System.out.println("Drawing animations!");
+		//System.out.println("Drawing animations!");
 		synchronized (animationLock) 
 		{
 			animationLock.notifyAll();
@@ -152,5 +160,9 @@ public class GameFrame extends JFrame
 	public static void setAnimationTimeMillis(long aNIMATION_TIME_MILLIS) 
 	{
 		ANIMATION_TIME_MILLIS = aNIMATION_TIME_MILLIS;
+	}
+	public static void realoadResources()
+	{
+		ResourceLoader.load();
 	}
 }

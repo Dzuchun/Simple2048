@@ -3,30 +3,33 @@ package com.dzuchun.games.simple2048;
 import java.awt.Graphics;
 import java.awt.Point;
 
-import com.dzuchun.math.LinePart;
-import com.dzuchun.math.Value;
-
-public class PlateAnimation extends AbstractAnimation {
-
+public class PlateAnimation extends AbstractAnimation 
+{
 	private Point beginPos, endPos;
 	private GraphicalPlate plate;
-	public PlateAnimation (long beginTime, long endTime, GraphicalPlate plate, Point beginPos, Point endPos) throws IntersectsAnimationException
+	public PlateAnimation (long duration, GraphicalPlate plate, Point endPos) throws IntersectsAnimationException
 	{
-		super(beginTime, endTime);
-		this.beginPos = beginPos;
+		super(duration);
+		this.beginPos = plate.getPos();
 		this.endPos = endPos;
 		this.plate = plate;
+		this.duration = duration;
 	}
-	@Override
-	public void draw (Graphics g, long time)
+	public void drawAnimation (Graphics g, long time)
 	{
-		super.draw(g, time);
 		this.plate.setPos(this.getPos(this.getPart()));
 		this.plate.draw(g);
 	}
 	private double getPart()
 	{
-		return(this.partCompleted);
+		if (this.partCompleted<0.5)
+		{
+			return(2*this.partCompleted*this.partCompleted);
+		}
+		else
+		{
+			return(1-2*(1-this.partCompleted)*(1-this.partCompleted));
+		}
 	}
 	private Point getPos(double part)
 	{
@@ -37,7 +40,7 @@ public class PlateAnimation extends AbstractAnimation {
 		if (this.getClass().equals(animation.getClass()))
 		{
 			PlateAnimation ani = (PlateAnimation)animation;
-			if ((ani.plate.equals(this.plate)) && ((new LinePart(new Value(this.beginTime), new Value(this.endTime))).intersects(new LinePart(new Value(ani.beginTime), new Value(ani.endTime)))))
+			if ((ani.plate.equals(this.plate)))
 			{
 				return true;
 			}

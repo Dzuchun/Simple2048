@@ -3,6 +3,7 @@ package com.dzuchun.games.simple2048;
 import java.awt.Graphics;
 import java.util.Vector;
 
+
 public abstract class AbstractAnimation 
 {
 	private static Vector<AbstractAnimation> animations = new Vector<AbstractAnimation>(0);
@@ -14,19 +15,16 @@ public abstract class AbstractAnimation
 			for (int i=0; i<animations.size(); i++)
 			{
 				animation = animations.get(i);
-				if (animation.endTime <= time)
+				if (!animation.initialized)
 				{
-					System.out.println("Completing " + animation.toString());
-					animation.complete(g);
+					//System.out.println("Initing animation " + animation.toString() + " at time " + time);
+					animation.initialize(time);
 				}
-				else
-				{
-					animation.draw(g, time);
-				}
+				animation.draw(g, time);
 			}
 		}
 	}
-	public static boolean allComplete()
+	public static boolean isAllComplete()
 	{
 		synchronized (animations)
 		{
@@ -34,42 +32,57 @@ public abstract class AbstractAnimation
 		}
 	}
 	
-	protected AbstractAnimation (long beginTime, long endTime) throws IntersectsAnimationException
+	protected long duration;
+	protected AbstractAnimation (long duration) throws IntersectsAnimationException
 	{
-		this.beginTime = beginTime;
-		this.endTime = endTime;
-		for (AbstractAnimation animation : animations)
+		AbstractAnimation animation;
+		for (int i=0; i<animations.size(); i++)
 		{
+			animation = animations.get(i);
 			if (this.interrupts(animation))
 			{
 				throw (new IntersectsAnimationException());
 			}
 		}
+		this.duration = duration;
 		synchronized (animations)
 		{
 			animations.add(this);
 		}
 	}
-	public void complete(Graphics g)
+	protected boolean initialized;
+	protected long beginTime;
+	protected long endTime;
+	protected void initialize(long time)
 	{
-		this.draw(g, this.endTime);
+		this.initialized = true;
+		this.beginTime = time;
+		this.endTime = this.beginTime + this.duration;
+	}
+	protected void complete(Graphics g)
+	{
+		this.drawAnimation(g, this.endTime);
 		synchronized (animations)
 		{
 			animations.remove(this);
 		}
 	}
-	protected long beginTime;
-	protected long endTime;
 	protected double partCompleted;
-	/**
-	 * Must be overriden, and invoked in overriden method.
-	 * @param g
-	 * @param time
-	 */
-	public void draw (Graphics g, long time)
+	public final void draw (Graphics g, long time)
 	{
 		this.partCompleted = ((double)time - (double)this.beginTime) / ((double)this.endTime - (double)this.beginTime);
+		//System.out.println("Animation " + this.toString() + " completed " + this.partCompleted);
+		//System.out.println("begin - " + this.beginTime + " current - " + time + " end - " + this.endTime);
+		if (time >= this.endTime)
+		{
+			this.complete(g);
+		}
+		else
+		{
+			this.drawAnimation(g, time);
+		}
 	}
+	protected abstract void drawAnimation (Graphics g, long time);
 	
 	protected abstract boolean interrupts (AbstractAnimation animation);
 }

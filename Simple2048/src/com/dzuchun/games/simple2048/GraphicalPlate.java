@@ -62,37 +62,9 @@ class GraphicalPlate extends JPanel
 			}
 		});
 	}
-	public void addAnimation (long delay, Point newPos) throws IntersectsAnimationException
+	public void performAnimation (Point newPos) throws IntersectsAnimationException
 	{
-		long currentTime = System.currentTimeMillis();
-		new PlateAnimation(currentTime + delay, currentTime + delay + GameFrame.getAnimationTimeMillis(), this, this.pos, newPos);
-		class DelayedNotificationThread extends Thread
-		{
-			private long time;
-			public DelayedNotificationThread (long time)
-			{
-				this.time = time;
-				this.setDaemon(true);
-				this.setName("Delayed-Notification-Thread-" + this.getId());
-			}
-			public void run()
-			{
-				long sleep = time - System.currentTimeMillis();
-				if (sleep > 0)
-				{
-					try 
-					{
-						Thread.sleep(sleep);
-					} 
-					catch (InterruptedException e) 
-					{
-						System.out.println("Unexpected exception:");
-						e.printStackTrace();
-					}
-				}
-				GameFrame.drawAnimations();
-			}
-		}
-		(new DelayedNotificationThread(currentTime + delay)).start();
+		new PlateAnimation(GameFrame.getAnimationTimeMillis(), this, newPos);
+		GameFrame.drawAnimations();
 	}
 }

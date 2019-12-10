@@ -6,8 +6,16 @@ public class LinePart
 	private Value end;
 	public LinePart (Value begin, Value end)
 	{
-		this.begin = begin;
-		this.end = end;
+		if (begin.greaterThan(end))
+		{
+			this.end = begin;
+			this.begin = end;
+		}
+		else
+		{
+			this.begin = begin;
+			this.end = end;
+		}
 	}
 	
 	public boolean belongs (Value v)
