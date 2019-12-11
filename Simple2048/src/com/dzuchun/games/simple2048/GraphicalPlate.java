@@ -52,7 +52,7 @@ class GraphicalPlate extends JPanel
 	}
 	public void draw (Graphics g)
 	{
-		g.drawImage(this.image, this.pos.x, this.pos.y, GameFrame.getPlateSize(), GameFrame.getPlateSize(), new ImageObserver() 
+		g.drawImage(this.image, this.pos.x, this.pos.y, GameFrame.getPlateSize()-1, GameFrame.getPlateSize()-1, new ImageObserver() 
 		{	
 			@Override
 			public boolean imageUpdate(Image img, int infoflags, int x, int y, int width, int height) 
@@ -62,9 +62,20 @@ class GraphicalPlate extends JPanel
 			}
 		});
 	}
-	public void performAnimation (Point newPos) throws IntersectsAnimationException
+	public void addAnimation (Point newPos) throws IntersectsAnimationException
 	{
 		new PlateAnimation(GameFrame.getAnimationTimeMillis(), this, newPos);
-		GameFrame.drawAnimations();
 	}
+	public Point getGridPos() throws WrongPositionException
+	{
+		if ((this.pos.x%GameFrame.getPlateSize() != 0)||(this.pos.x%GameFrame.getPlateSize() != 0))
+		{
+			throw (new WrongPositionException());
+		}
+		return (GameFrame.getPointForPos(this.pos));
+	}
+}
+class WrongPositionException extends Exception
+{
+	private static final long serialVersionUID = 1L;
 }

@@ -9,16 +9,19 @@ public class Testing {
 		ResourceLoader.load();
 		GameFrame a = new GameFrame(5);
 		GraphicalPlate b = new GraphicalPlate(2);
-		a.addPlate(b);
-		b.setPos(new Point(0, 42));
 		try
 		{
 			while (true)
 			{
-					b.performAnimation(new Point(125, 42));
+					b.setPos(GameFrame.getPointForPos(0, 0));
 					Thread.sleep(GameFrame.getAnimationTimeMillis());
-					b.performAnimation(new Point(0, 42));
+					a.addPlate(b);
 					Thread.sleep(GameFrame.getAnimationTimeMillis());
+					b.addAnimation(GameFrame.getPointForPos(1, 0));
+					GameFrame.drawAnimations();
+					Thread.sleep(GameFrame.getAnimationTimeMillis());
+					b.addAnimation(GameFrame.getPointForPos(1, 1));
+					a.removePlate(b);
 			}
 		}
 		catch (IntersectsAnimationException e) {

@@ -14,9 +14,17 @@ import javax.swing.JPanel;
 public class GameFrame extends JFrame 
 {
 	private static final long serialVersionUID = 1L;
-	private static int PLATE_SIZE = 40;
+	private static int PLATE_SIZE = 41;
 	private static long ANIMATION_TIME_MILLIS = 700;
 	private static int FRAMES_PER_SECOND = 60;
+	public static Point getPointForPos (int xCoordinate, int yCoordinate)
+	{
+		return(new Point(xCoordinate*PLATE_SIZE, yCoordinate*PLATE_SIZE));
+	}
+	public static Point getPointForPos (Point pos)
+	{
+		return(getPointForPos(pos.x, pos.y));
+	}
 	
 	JLayeredPane canvas;
 	private int size;
@@ -43,7 +51,7 @@ public class GameFrame extends JFrame
 			public GamePanel()
 			{
 				super();
-				this.setSize((PLATE_SIZE+1)*size + 1, (PLATE_SIZE+1)*size + 1); //TODO append
+				this.setSize(PLATE_SIZE*size + 1, PLATE_SIZE*size + 1); //TODO append
 			}
 			
 			@Override
@@ -54,8 +62,8 @@ public class GameFrame extends JFrame
 				g.setColor(Color.GRAY);
 				for (int i=0; i<=size; i++)
 				{
-					g.drawLine(0, (PLATE_SIZE+1)*i, (int)this.getSize().getWidth(), (PLATE_SIZE+1)*i); //TODO append
-					g.drawLine((PLATE_SIZE+1)*i, 0, (PLATE_SIZE+1)*i, (int)this.getSize().getHeight()); //TODO append
+					g.drawLine(0, (PLATE_SIZE-1)*i, (int)this.getSize().getWidth(), (PLATE_SIZE-1)*i); //TODO append
+					g.drawLine((PLATE_SIZE-1)*i, 0, (PLATE_SIZE-1)*i, (int)this.getSize().getHeight()); //TODO append
 				}
 				AbstractAnimation.drawAll(g, System.currentTimeMillis());
 				for (GraphicalPlate plate : plates)
@@ -114,7 +122,7 @@ public class GameFrame extends JFrame
 							e.printStackTrace();
 						}
 					}
-					//System.out.println("Invoking repaint fo canvas");
+					//System.out.println("Invoking repaint for canvas");
 					canvas.repaint(frameLength);
 				}
 			}
@@ -140,6 +148,13 @@ public class GameFrame extends JFrame
 		this.repaint();
 		this.canvas.repaint();
 		plate.repaint(0);
+	}
+	public void removePlate(GraphicalPlate plate)
+	{
+		this.plates.remove(plate);
+		this.canvas.remove(plate);
+		this.repaint();
+		this.canvas.repaint();
 	}
 	public static int getPlateSize() 
 	{
