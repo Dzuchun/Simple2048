@@ -36,15 +36,18 @@ public abstract class AbstractAnimation
 	protected AbstractAnimation (long duration) throws IntersectsAnimationException
 	{
 		AbstractAnimation animation;
-		for (int i=0; i<animations.size(); i++)
+		synchronized(animations)
 		{
-			animation = animations.get(i);
-			if (this.interrupts(animation))
+			for (int i=0; i<animations.size(); i++)
 			{
-				throw (new IntersectsAnimationException());
+				animation = animations.get(i);
+				if (this.interrupts(animation))
+				{
+					throw (new IntersectsAnimationException());
+				}
 			}
+			this.duration = duration;
 		}
-		this.duration = duration;
 		synchronized (animations)
 		{
 			animations.add(this);

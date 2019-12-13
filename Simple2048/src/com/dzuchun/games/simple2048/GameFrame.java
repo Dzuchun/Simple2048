@@ -15,17 +15,21 @@ public class GameFrame extends JFrame
 {
 	private static final long serialVersionUID = 1L;
 	private static int PLATE_SIZE = 41;
-	private static long ANIMATION_TIME_MILLIS = 700;
+	private static long ANIMATION_TIME_MILLIS = 500;
 	private static int FRAMES_PER_SECOND = 60;
 	public static Point getPointForPos (int xCoordinate, int yCoordinate)
 	{
-		return(new Point(xCoordinate*PLATE_SIZE, yCoordinate*PLATE_SIZE));
+		return(new Point(xCoordinate*(PLATE_SIZE-1), yCoordinate*(PLATE_SIZE-1)));
 	}
 	public static Point getPointForPos (Point pos)
 	{
 		return(getPointForPos(pos.x, pos.y));
 	}
-	
+	public static Point getPosForPoint (Point p)
+	{
+		//System.out.println("Returning " + new Point(p.x/(PLATE_SIZE-1), p.y/(PLATE_SIZE-1))); //TODO KOSTIL!!!
+		return(new Point(p.x/(PLATE_SIZE-1), p.y/(PLATE_SIZE-1)));
+	}
 	JLayeredPane canvas;
 	private int size;
 	JPanel mainPanel;
@@ -36,7 +40,7 @@ public class GameFrame extends JFrame
 	{
 		realoadResources();
 		this.setTitle("Simple 2048");
-		this.setIconImage(ResourceLoader.plateWorth2);
+		this.setIconImage(ResourceLoader.plateWorth2Icon);
 		this.size = size;
 		this.plates = new Vector<GraphicalPlate>(0);
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -51,7 +55,7 @@ public class GameFrame extends JFrame
 			public GamePanel()
 			{
 				super();
-				this.setSize(PLATE_SIZE*size + 1, PLATE_SIZE*size + 1); //TODO append
+				this.setSize((PLATE_SIZE-1)*size+1, (PLATE_SIZE-1)*size + 1);
 			}
 			
 			@Override
@@ -65,11 +69,14 @@ public class GameFrame extends JFrame
 					g.drawLine(0, (PLATE_SIZE-1)*i, (int)this.getSize().getWidth(), (PLATE_SIZE-1)*i); //TODO append
 					g.drawLine((PLATE_SIZE-1)*i, 0, (PLATE_SIZE-1)*i, (int)this.getSize().getHeight()); //TODO append
 				}
+				//TODO draw plate bg instead
 				AbstractAnimation.drawAll(g, System.currentTimeMillis());
-				for (GraphicalPlate plate : plates)
+				GraphicalPlate plate;
+				for (int i=0; i<plates.size(); i++)
 				{
+					plate = plates.get(i);
 					//System.out.println("Drawing plate " + plate.toString());
-					plate.draw(g);
+					plate.draw(g); //TODO may need to uncomment
 				}
 				Toolkit.getDefaultToolkit().sync();
 			}
@@ -130,7 +137,7 @@ public class GameFrame extends JFrame
 		this.animationThread = new AnimationThread();
 		this.animationThread.start();
 		this.mainPanel.add(this.canvas);
-		this.setSize(300, 300);
+		this.setSize(this.size * PLATE_SIZE + 10, this.size * PLATE_SIZE + 40);
 		this.setVisible(true);
 	}
 	public void addPlate(int worth, Point pos)
@@ -146,16 +153,62 @@ public class GameFrame extends JFrame
 		this.canvas.add(plate);
 		this.canvas.setLayer(plate, 2);
 		this.repaint();
-		this.canvas.repaint();
+		//this.canvas.repaint();
 		plate.repaint(0);
 	}
 	public void removePlate(GraphicalPlate plate)
 	{
+		System.out.println("Removing plate " + plate.toString());
 		this.plates.remove(plate);
 		this.canvas.remove(plate);
-		this.repaint();
-		this.canvas.repaint();
+		//this.canvas.repaint();
 	}
+	public boolean hasPlateForPos (Point pos)
+	{
+		for (GraphicalPlate plate : plates)
+		{
+			if (getPosForPoint(plate.getPos()).equals(pos))
+			{
+				return true;
+			}
+		}
+		return(false);
+	}
+	public GraphicalPlate getPlateForPos (Point pos)
+	{
+		for (GraphicalPlate plate : plates)
+		{
+			if (GameFrame.getPosForPoint(plate.getPos()).equals(pos))
+			{
+				return(plate);
+			}
+		}
+		return null;
+	}
+	public void performUpdates ()
+	{
+		GraphicalPlate plate;
+		for (int i=0; i<this.plates.size(); i++)
+		{
+			plate = this.plates.get(i);
+			if (plate.isUpdateScheduled())
+			{
+				plate.worthUpdate(this);
+			}
+		}
+		this.repaint();
+	}
+	/*public boolean platePresentAt(Point pos)
+	{
+		for (GraphicalPlate plate : this.plates)
+		{
+			if (pos.equals(getPosForPoint(plate.getPos())))
+			{
+				return (true);
+			}
+		}
+		return(false);
+	}*/
 	public static int getPlateSize() 
 	{
 		return PLATE_SIZE;

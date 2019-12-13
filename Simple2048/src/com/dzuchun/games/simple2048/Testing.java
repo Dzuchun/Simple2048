@@ -9,18 +9,18 @@ public class Testing {
 		ResourceLoader.load();
 		GameFrame a = new GameFrame(5);
 		GraphicalPlate b = new GraphicalPlate(2);
-		try
+		/*try
 		{
 			while (true)
 			{
-					b.setPos(GameFrame.getPointForPos(0, 0));
-					Thread.sleep(GameFrame.getAnimationTimeMillis());
+					/*b.setPos(GameFrame.getPointForPos(0, 0));
 					a.addPlate(b);
-					Thread.sleep(GameFrame.getAnimationTimeMillis());
 					b.addAnimation(GameFrame.getPointForPos(1, 0));
 					GameFrame.drawAnimations();
 					Thread.sleep(GameFrame.getAnimationTimeMillis());
 					b.addAnimation(GameFrame.getPointForPos(1, 1));
+					GameFrame.drawAnimations();
+					Thread.sleep(GameFrame.getAnimationTimeMillis());
 					a.removePlate(b);
 			}
 		}
@@ -31,7 +31,9 @@ public class Testing {
 		 catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
+		b.setPos(GameFrame.getPointForPos(3, 4));
+		a.addPlate(b);
 	}
 }
 
