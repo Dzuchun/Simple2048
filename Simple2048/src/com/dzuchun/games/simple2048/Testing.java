@@ -1,7 +1,5 @@
 package com.dzuchun.games.simple2048;
 
-import java.awt.Point;
-
 public class Testing {
 
 	public static void main(String[] args) 

@@ -17,7 +17,14 @@ public class PlateAnimation extends AbstractAnimation
 	}
 	public void drawAnimation (Graphics g, long time)
 	{
-		this.plate.setPos(this.getPos(this.getPart()));
+		if (time == this.endTime)
+		{
+			this.plate.setPos(this.endPos);
+		}
+		else
+		{
+			this.plate.setPos(this.getPos(this.getPart()));
+		}
 		this.plate.draw(g);
 	}
 	private double getPart()
@@ -46,5 +53,13 @@ public class PlateAnimation extends AbstractAnimation
 			}
 		}
 		return false;
+	}
+	public boolean isFor (GraphicalPlate plate)
+	{
+		if (this.plate.equals(plate))
+		{
+			//System.out.println("plate at "+ plate.getPos().toString() + " has animation for it");
+		}
+		return(this.plate.equals(plate));
 	}
 }

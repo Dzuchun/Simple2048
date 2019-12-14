@@ -15,11 +15,11 @@ public class GameFrame extends JFrame
 {
 	private static final long serialVersionUID = 1L;
 	private static int PLATE_SIZE = 41;
-	private static long ANIMATION_TIME_MILLIS = 500;
+	private static long ANIMATION_TIME_MILLIS = 2000;
 	private static int FRAMES_PER_SECOND = 60;
 	public static Point getPointForPos (int xCoordinate, int yCoordinate)
 	{
-		return(new Point(xCoordinate*(PLATE_SIZE-1), yCoordinate*(PLATE_SIZE-1)));
+		return(new Point(xCoordinate*PLATE_SIZE, yCoordinate*PLATE_SIZE));
 	}
 	public static Point getPointForPos (Point pos)
 	{
@@ -28,7 +28,7 @@ public class GameFrame extends JFrame
 	public static Point getPosForPoint (Point p)
 	{
 		//System.out.println("Returning " + new Point(p.x/(PLATE_SIZE-1), p.y/(PLATE_SIZE-1))); //TODO KOSTIL!!!
-		return(new Point(p.x/(PLATE_SIZE-1), p.y/(PLATE_SIZE-1)));
+		return(new Point((p.x - p.x%PLATE_SIZE)/PLATE_SIZE, (p.y - p.y%PLATE_SIZE)/PLATE_SIZE));
 	}
 	JLayeredPane canvas;
 	private int size;
@@ -55,28 +55,33 @@ public class GameFrame extends JFrame
 			public GamePanel()
 			{
 				super();
-				this.setSize((PLATE_SIZE-1)*size+1, (PLATE_SIZE-1)*size + 1);
+				this.setSize(PLATE_SIZE*size+1, PLATE_SIZE*size + 1);
 			}
 			
 			@Override
 			public void paint(Graphics g)
 			{
 				super.paint(g);
-				//System.out.println("Painting canvas");
+				if (AbstractAnimation.isAllComplete())
+				{
+					System.out.println("Painting canvas - " + plates.size() + " plates");
+				}
 				g.setColor(Color.GRAY);
 				for (int i=0; i<=size; i++)
 				{
-					g.drawLine(0, (PLATE_SIZE-1)*i, (int)this.getSize().getWidth(), (PLATE_SIZE-1)*i); //TODO append
-					g.drawLine((PLATE_SIZE-1)*i, 0, (PLATE_SIZE-1)*i, (int)this.getSize().getHeight()); //TODO append
+					g.drawLine(0, PLATE_SIZE*i, (int)this.getSize().getWidth(), PLATE_SIZE*i); //TODO append
+					g.drawLine(PLATE_SIZE*i, 0, PLATE_SIZE*i, (int)this.getSize().getHeight()); //TODO append
 				}
 				//TODO draw plate bg instead
 				AbstractAnimation.drawAll(g, System.currentTimeMillis());
 				GraphicalPlate plate;
-				for (int i=0; i<plates.size(); i++)
+				synchronized (plates)
 				{
-					plate = plates.get(i);
-					//System.out.println("Drawing plate " + plate.toString());
-					plate.draw(g); //TODO may need to uncomment
+					for (int i=0; i<plates.size(); i++)
+					{
+						plate = plates.get(i);
+						plate.draw(g);
+					}
 				}
 				Toolkit.getDefaultToolkit().sync();
 			}
@@ -104,7 +109,7 @@ public class GameFrame extends JFrame
 					{
 						try 
 						{
-							synchronized (animationLock) 
+							synchronized (animationLock)
 							{
 								//System.out.println("Paused animation thread");
 								animationLock.wait();
@@ -158,20 +163,23 @@ public class GameFrame extends JFrame
 	}
 	public void removePlate(GraphicalPlate plate)
 	{
-		System.out.println("Removing plate " + plate.toString());
+		System.out.println("Removing plate with hashcode " + plate.hashCode());
 		this.plates.remove(plate);
 		this.canvas.remove(plate);
 		//this.canvas.repaint();
 	}
 	public boolean hasPlateForPos (Point pos)
 	{
-		for (GraphicalPlate plate : plates)
+		GraphicalPlate plate;
+		for (int i=0; i<plates.size(); i++)
 		{
+			plate = plates.get(i);
 			if (getPosForPoint(plate.getPos()).equals(pos))
 			{
 				return true;
 			}
 		}
+		//System.out.println("No plate for pos - " + pos.toString());
 		return(false);
 	}
 	public GraphicalPlate getPlateForPos (Point pos)
@@ -184,19 +192,6 @@ public class GameFrame extends JFrame
 			}
 		}
 		return null;
-	}
-	public void performUpdates ()
-	{
-		GraphicalPlate plate;
-		for (int i=0; i<this.plates.size(); i++)
-		{
-			plate = this.plates.get(i);
-			if (plate.isUpdateScheduled())
-			{
-				plate.worthUpdate(this);
-			}
-		}
-		this.repaint();
 	}
 	/*public boolean platePresentAt(Point pos)
 	{
@@ -229,8 +224,23 @@ public class GameFrame extends JFrame
 	{
 		ANIMATION_TIME_MILLIS = aNIMATION_TIME_MILLIS;
 	}
+	public static int getFrameLength()
+	{
+		return(1000/FRAMES_PER_SECOND);
+	}
 	public static void realoadResources()
 	{
 		ResourceLoader.load();
+	}
+	public boolean platePresent(GraphicalPlate plate)
+	{
+		for (GraphicalPlate g : plates)
+		{
+			if (g.equals(plate))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 }

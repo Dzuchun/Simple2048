@@ -1,6 +1,8 @@
 package com.dzuchun.games.simple2048;
 
 import java.awt.Graphics;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Vector;
 
 
@@ -30,8 +32,7 @@ public abstract class AbstractAnimation
 		{
 			return (animations.isEmpty());
 		}
-	}
-	
+	} 
 	protected long duration;
 	protected AbstractAnimation (long duration) throws IntersectsAnimationException
 	{
@@ -64,11 +65,11 @@ public abstract class AbstractAnimation
 	}
 	protected void complete(Graphics g)
 	{
-		this.drawAnimation(g, this.endTime);
 		synchronized (animations)
 		{
 			animations.remove(this);
 		}
+		this.drawAnimation(g, this.endTime);
 	}
 	protected double partCompleted;
 	public final void draw (Graphics g, long time)
@@ -88,6 +89,31 @@ public abstract class AbstractAnimation
 	protected abstract void drawAnimation (Graphics g, long time);
 	
 	protected abstract boolean interrupts (AbstractAnimation animation);
+	
+	public static Boolean hasAs (Method method, Object o)
+	{
+		synchronized(animations)
+		{
+			AbstractAnimation animation;
+			try
+			{
+				for (int i=0; i<animations.size(); i++)
+				{
+					animation = animations.get(i);
+					if((Boolean)method.invoke(animation, o))
+					{
+						return true;
+					}
+				}
+			}
+			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | ClassCastException e)
+			{
+				e.printStackTrace();
+				return null;
+			}
+			return false;
+		}
+	}
 }
 class IntersectsAnimationException extends Exception
 {

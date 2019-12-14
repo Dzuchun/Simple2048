@@ -1,8 +1,6 @@
 package com.dzuchun.games.simple2048;
 
 import java.awt.Point;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -11,10 +9,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.security.Key;
 import java.util.LinkedHashMap;
 import java.util.Random;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.jnativehook.GlobalScreen;
+import org.jnativehook.NativeHookException;
+import org.jnativehook.keyboard.NativeKeyEvent;
+import org.jnativehook.keyboard.NativeKeyListener;
 
 public class GameBrain 
 {
@@ -28,7 +32,7 @@ public class GameBrain
 	
 	private static Preferencies preferencies;
 	private static GameFrame gameFrame;
-	private static int[][] worthes;
+	private static Vector<GraphicalPlate> platesToUpdate;
 	public static void main(String[] args) 
 	{
 		//TODO DELETE these lines!!
@@ -36,7 +40,7 @@ public class GameBrain
 		{
 			savePreferencies(new Preferencies(version, stringVersion));
 		}
-		catch (IOException e) 		
+		catch (IOException e) 
 		{
 			e.printStackTrace();
 		}
@@ -50,43 +54,65 @@ public class GameBrain
 			e.printStackTrace();
 		}
 		initGame();
-		gameFrame.addKeyListener(new KeyListener() {
+		try 
+        {
+                GlobalScreen.registerNativeHook();
+                Logger.getLogger(GlobalScreen.class.getPackage().getName()).setLevel(Level.WARNING);
+        }
+        catch (NativeHookException ex) 
+        {
+                System.err.println("There was a problem registering the native hook.");
+                System.err.println(ex.getMessage());
+        }
+        GlobalScreen.addNativeKeyListener(new NativeKeyListener() 
+        {	
+			@Override
+			public void nativeKeyTyped(NativeKeyEvent arg0)	{}
 			
 			@Override
-			public void keyTyped(KeyEvent e)  //TODO FIX FOR LINUX!!!
+			public void nativeKeyReleased(NativeKeyEvent arg0) 
 			{
-				switch (e.getKeyCode())
+				if (gameFrame.isFocused())
 				{
-				case KeyEvent.VK_A:
-					System.out.println("Detected left press");
-					moveAll(MOVE_LEFT);
-					break;
-				case KeyEvent.VK_D:
-					System.out.println("Detected right press");
-					moveAll(MOVE_RIGHT);
-					break;
-				case KeyEvent.VK_W:
-					System.out.println("Detected up press");
-					moveAll(MOVE_UP);
-					break;
-				case KeyEvent.VK_S:
-					System.out.println("Detected down press");
-					moveAll(MOVE_DOWN);
-					break;
+					switch (arg0.getKeyCode())
+					{
+					case NativeKeyEvent.VC_UP:
+						System.out.println("Detected up arrow press");
+						moveAll(MOVE_UP);
+						break;
+					case NativeKeyEvent.VC_DOWN:
+						System.out.println("Detected down arrow press");
+						moveAll(MOVE_DOWN);
+						break;
+					case NativeKeyEvent.VC_LEFT:
+						System.out.println("Detected LEFT arrow press");
+						moveAll(MOVE_LEFT);
+						break;
+					case NativeKeyEvent.VC_RIGHT:
+						System.out.println("Detected right arrow press");
+						moveAll(MOVE_RIGHT);
+						break;
 					default:
-						System.out.println("Idk this key:" + e.getKeyCode());
-						//System.out.println("Please use " + KeyEvent.VK_A + " " + KeyEvent.VK_S + " " + KeyEvent.VK_W + " " + KeyEvent.VK_D + " ");
+						System.out.println("Idk a \"" + arg0.getKeyCode() + "\" key, please use " + NativeKeyEvent.VC_LEFT + " " + NativeKeyEvent.VC_UP + " " + NativeKeyEvent.VC_RIGHT + " " + NativeKeyEvent.VC_DOWN + " ");
 						return;
+					}
 				}
-				gameFrame.performUpdates();
+				performPlateUpdates();
+				spawnPlate(10);
+				System.out.println("STEP DIVIDER");
 			}
 			
 			@Override
-			public void keyReleased(KeyEvent e) {}
-			
-			@Override
-			public void keyPressed(KeyEvent e) {}
+			public void nativeKeyPressed(NativeKeyEvent arg0) {}
 		});
+	}
+	private static void performPlateUpdates()
+	{
+		for (GraphicalPlate plate : platesToUpdate)
+		{
+			plate.worthUpdate(gameFrame);
+		}
+		platesToUpdate.clear();
 	}
 	private static void preInitGame () throws ClassNotFoundException, FileNotFoundException, IOException
 	{
@@ -95,17 +121,10 @@ public class GameBrain
 	}
 	private static void initGame()
 	{
-		gameFrame = new GameFrame(preferencies.getGridSize());
-		worthes = new int[preferencies.getGridSize()][preferencies.getGridSize()];
-		for (int[] b : worthes) 
-		{
-			for (int j = 0; j < b.length; j++) 
-			{
-				@SuppressWarnings("unused")
-				int i = b[j];
-				i=0;
-			}
-		}
+		size = preferencies.getGridSize();
+		gameFrame = new GameFrame(size);
+		spawnPlate(2);
+		platesToUpdate = new Vector<GraphicalPlate>(0);
 	}
 	private static Preferencies loadPreferencies() throws ClassNotFoundException, FileNotFoundException, IOException
 	{
@@ -126,21 +145,21 @@ public class GameBrain
 		}
 		pref.save(f);
 	}
+	private static int size;
 	private static Vector<Point> getFreePlace()
 	{
 		Vector<Point> res = new Vector<Point>(0);
-		int[] a;
-		for (int i=0; i<worthes.length; i++)
+		for (int i=0; i<size; i++)
 		{
-			a = worthes[i];
-			for (int j=0; j<a.length; j++)
+			for (int j=0; j<size; j++)
 			{
-				if (worthes[i][j] == 0)
+				if (!gameFrame.hasPlateForPos(new Point(i, j)))
 				{
 					res.add(new Point(i, j));
 				}
 			}
 		}
+		System.out.println("Free space left - " + res.size());
 		return(res);
 	}
 	private static Random plateSpawnRandom;
@@ -153,17 +172,23 @@ public class GameBrain
 			Point place = freePlace.get((int)(plateSpawnRandom.nextDouble()*freePlace.size()));
 			gameFrame.addPlate(2, GameFrame.getPointForPos(place)); //TODO define default begin worth
 			System.out.println("Placing plate on " + place.toString());
-			worthes[place.x][place.y] = 2;
 		}
 	}
+	private static boolean isBusy;
+	private static final Object busyMonitor = new Object();
 	public static void moveAll(int move)
 	{
+		if (isBusy)
+		{
+			System.out.println("Moving plates, i'm busy!");
+			return;
+		}
+		synchronized(busyMonitor)
+		{
+			isBusy = true;
+		}
 		//TODO dodefine!
 		int used;
-		int[] array;
-		int current;
-		@SuppressWarnings("unused")
-		int [][] worthes1 = transponate(worthes);
 		GraphicalPlate plate;
 		GraphicalPlate prev = null;
 		switch (move)
@@ -173,17 +198,15 @@ public class GameBrain
 		case MOVE_RIGHT:
 			break;
 		case MOVE_UP:
-			for (int i=0; i<worthes.length; i++)
+			for (int i=0; i<size; i++)
 			{
-				array = worthes[i];
 				used = 0;
 				prev = null;
-				for (int j=0; j<array.length; j++)
+				for (int j=0; j<size; j++)
 				{
-					current = array[j];
 					try 
 					{
-						if (current != 0)
+						if (gameFrame.hasPlateForPos(new Point(i, j)))
 						{
 							plate = gameFrame.getPlateForPos(new Point(i, j));
 							if (prev != null)
@@ -193,6 +216,7 @@ public class GameBrain
 									used--;
 									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
 									prev.addUpdate(plate);
+									platesToUpdate.add(prev);
 									prev = null;
 								}
 								else
@@ -223,14 +247,12 @@ public class GameBrain
 			}
 			break;
 		case MOVE_DOWN:
-			for (int i=0; i<worthes.length; i++)
+			for (int i=0; i<size; i++)
 			{
-				array = worthes[i];
-				used = array.length-1;
+				used = size-1;
 				prev = null;
-				for (int j=array.length-1; j>=0; j--)
+				for (int j=size-1; j>=0; j--)
 				{
-					current = array[j];
 					try 
 					{
 						if (gameFrame.hasPlateForPos(new Point(i, j)))
@@ -243,6 +265,7 @@ public class GameBrain
 									used++;
 									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
 									prev.addUpdate(plate);
+									platesToUpdate.add(prev);
 									prev = null;
 								}
 								else
@@ -260,10 +283,6 @@ public class GameBrain
 							}
 							used--;
 						}
-						else
-						{
-							//System.out.println("Got error on " + i + " " + j);
-						}
 					}
 					catch (IntersectsAnimationException e) 
 					{
@@ -275,6 +294,7 @@ public class GameBrain
 					}
 				}
 			}
+			
 			break;
 			default:
 				throw(new IllegalArgumentException());
@@ -288,42 +308,14 @@ public class GameBrain
 		{
 			e.printStackTrace();
 		}
-		gameFrame.performUpdates();
-		updateWorthes();
+		synchronized(busyMonitor)
+		{
+			isBusy = false;
+		}
 	}
 	public static boolean isGameLost()
 	{
 		return(getFreePlace().isEmpty());
-	}
-	private static void updateWorthes()
-	{
-		for (int i=0; i<worthes.length; i++)
-		{
-			for (int j=0; j<worthes[i].length; j++)
-			{
-				if (gameFrame.hasPlateForPos(new Point(i, j)))
-				{
-					worthes[i][j] = gameFrame.getPlateForPos(new Point(i, j)).getWorth();
-				}
-				else
-				{
-					worthes[i][j] = 0;
-				}
-			}
-		}
-	}
-	private static int[][] transponate (int[][] arg) //TODO doformate
-	{
-		int l = arg.length;
-		int[][] res = new int[l][l];
-		for (int i=0; i<l; i++)
-		{
-			for (int j=0; j<l; j++)
-			{
-				res[i][j] = arg[j][i];
-			}
-		}
-		return res;
 	}
 }
 class Preferencies implements Serializable
