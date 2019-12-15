@@ -102,19 +102,19 @@ public class GameBrain
 						System.out.println("Idk a \"" + arg0.getKeyCode() + "\" key, please use " + NativeKeyEvent.VC_LEFT + " " + NativeKeyEvent.VC_UP + " " + NativeKeyEvent.VC_RIGHT + " " + NativeKeyEvent.VC_DOWN + " ");
 						return;
 					}
+					performPlateUpdates();
+					gameFrame.revalidateAll();
+					if ((moveHappened)&&isGameLost())
+					{
+						performGameLost();
+						return;
+					}
+					if (moveHappened)
+					{
+						spawnPlate(spawnAmount);
+					}
+					System.out.println("STEP DIVIDER");
 				}
-				performPlateUpdates();
-				gameFrame.revalidateAll();
-				if ((moveHappened)&&isGameLost())
-				{
-					performGameLost();
-					return;
-				}
-				if (moveHappened)
-				{
-					spawnPlate(spawnAmount);
-				}
-				System.out.println("STEP DIVIDER");
 			}
 
 			@Override
