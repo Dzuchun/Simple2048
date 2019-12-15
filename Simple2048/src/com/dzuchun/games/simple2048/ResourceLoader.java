@@ -19,7 +19,7 @@ public class ResourceLoader
 	public static Image plateWorth2048Icon;
 	public static void load()
 	{
-		plateWorth2Icon = (new ImageIcon("src/resources/Plate_Worth_2.png")).getImage();
+		plateWorth2Icon = (new ImageIcon("src/resources/Plate_Worth_2.jpg")).getImage();
 		plateWorth4Icon = (new ImageIcon("src/resources/Plate_Worth_4.png")).getImage();
 		plateWorth8Icon = (new ImageIcon("src/resources/Plate_Worth_8.png")).getImage();
 		plateWorth16Icon = (new ImageIcon("src/resources/Plate_Worth_16.png")).getImage();
