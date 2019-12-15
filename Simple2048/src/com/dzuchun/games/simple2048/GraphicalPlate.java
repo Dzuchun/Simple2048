@@ -1,14 +1,12 @@
 package com.dzuchun.games.simple2048;
 
-import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.image.ImageObserver;
 
-class GraphicalPlate extends Component
+class GraphicalPlate
 {
-	private static final long serialVersionUID = 1L;
 	private static Image ImageForWorth (int worth)
 	{
 		switch(worth)
@@ -80,20 +78,15 @@ class GraphicalPlate extends Component
 	public void setPos (Point newPos)
 	{
 		this.pos = newPos;
+		this.isValid = false;
 	}
 	public Point getPos()
 	{
 		return (this.pos);
 	}
-	
-	@Override
-	public void paint (Graphics g)
-	{
-		this.draw(g);
-	}
 	public void draw (Graphics g)
 	{
-		g.drawImage(this.image, this.pos.x, this.pos.y, GameFrame.getPlateSize()-1, GameFrame.getPlateSize()-1, new ImageObserver()
+		g.drawImage(this.image, this.pos.x+1, this.pos.y+1, GameFrame.getPlateSize()-1, GameFrame.getPlateSize()-1, new ImageObserver()
 		{	
 			@Override
 			public boolean imageUpdate(Image img, int infoflags, int x, int y, int width, int height) 
@@ -102,35 +95,50 @@ class GraphicalPlate extends Component
 				return false;
 			}
 		});
-		/*if (!this.hasAnimation())
+	}
+	private boolean isValid;
+	public void revalidate()
+	{
+		if ((this.pos.x%GameFrame.getPlateSize() != 0)||(this.pos.y%GameFrame.getPlateSize() != 0))
 		{
-			//System.out.print("Changing plate pos from " + this.pos.toString() + " to ");
-			int plateSize = GameFrame.getPlateSize();
-			int shaftle;
-			Point newPos = this.getPos();
-			if (this.pos.x%plateSize != 0)
-			{
-				shaftle = this.pos.x%plateSize;
-				newPos.x = this.pos.x - shaftle;
-				if (shaftle > plateSize/2)
-				{ 
-					newPos.x += plateSize; 
-					//System.out.print("a bit more, due to shaflex = " + shaftle);
-				}
+			this.isValid = false;
+		}
+		if (!this.isValid)
+		{
+			this.validate();
+			this.isValid = true;
+		}
+		//System.out.println("Revalidated plate at pos " + this.pos);
+	}
+	private void validate()
+	{
+		//System.out.println("Validating plate at coords: " + this.pos.toString());
+		//System.out.print("Changing plate pos from " + this.pos.toString() + " to ");
+		int plateSize = GameFrame.getPlateSize();
+		int shaftle;
+		Point newPos = this.getPos();
+		if ((this.pos.x%plateSize) != 0)
+		{
+			shaftle = this.pos.x%plateSize;
+			newPos.x = this.pos.x - shaftle;
+			if (shaftle > plateSize/2)
+			{ 
+				newPos.x += plateSize; 
+				//System.out.print("a bit more, due to shaflex = " + shaftle);
 			}
-			if (this.pos.y%plateSize != 0)
-			{
-				shaftle = this.pos.y%plateSize;
-				newPos.y = this.pos.y - shaftle;
-				if (shaftle > plateSize/2)
-				{ 
-					newPos.y += plateSize; 
-					//System.out.print("a bit more, due to shafley = " + shaftle);
-				}
+		}
+		if ((this.pos.y%plateSize) != 0)
+		{
+			shaftle = this.pos.y%plateSize;
+			newPos.y = this.pos.y - shaftle;
+			if (shaftle > plateSize/2)
+			{ 
+				newPos.y += plateSize; 
+				//System.out.print("a bit more, due to shafley = " + shaftle);
 			}
-			this.setPos(newPos);
-			//System.out.println(this.pos.toString());
-		}*/
+		}
+		this.setPos(newPos);
+		//System.out.println(this.pos.toString());
 	}
 	public Boolean hasAnimation()
 	{
@@ -138,7 +146,8 @@ class GraphicalPlate extends Component
 		Class[] a = {GraphicalPlate.class};
 		try 
 		{
-			return(AbstractAnimation.hasAs(PlateAnimation.class.getMethod("isFor", a), this));
+			boolean b = AbstractAnimation.hasAs(PlateAnimation.class.getMethod("isFor", a), this);
+			return b;
 		}
 		catch (NoSuchMethodException | SecurityException e)
 		{
@@ -148,7 +157,7 @@ class GraphicalPlate extends Component
 	}
 	public void addAnimation (Point newPos) throws IntersectsAnimationException
 	{
-		//System.out.println("Adding animation for plate " + this.toString() + " from " + this.pos.toString() + " to " + newPos.toString());
+		System.out.println("Adding animation for plate " + this.toString() + " from " + this.pos.toString() + " to " + newPos.toString());
 		if (!((this.pos.x == newPos.x)||(this.pos.y == newPos.y)))
 		{
 			System.out.println("WARNING! INCORRECT ANIMATION");	
@@ -163,7 +172,7 @@ class GraphicalPlate extends Component
 	private GraphicalPlate infusor;
 	public void addUpdate(GraphicalPlate infusor)
 	{
-		System.out.println("Infusing " + infusor.toString() + " to " + this.toString() + " hascode - " + this.hashCode());
+		//System.out.println("Infusing " + infusor.toString() + " to " + this.toString() + " hascode - " + this.hashCode());
 		this.worth = getNextWorth(this.worth);
 		this.updateScheduled = true;
 		this.infusor = infusor;
@@ -174,7 +183,7 @@ class GraphicalPlate extends Component
 	}
 	public void worthUpdate(GameFrame gameFrame)
 	{
-		System.out.println("Worthupdating " + this.toString());
+		//System.out.println("Worthupdating " + this.toString());
 		this.updateIcon();
 		this.updateScheduled = false;
 		gameFrame.removePlate(this.infusor);

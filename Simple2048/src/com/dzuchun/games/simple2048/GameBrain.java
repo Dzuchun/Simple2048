@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 
 import org.jnativehook.GlobalScreen;
 import org.jnativehook.NativeHookException;
+import org.jnativehook.keyboard.NativeKeyAdapter;
 import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 
@@ -33,6 +34,7 @@ public class GameBrain
 	private static Preferencies preferencies;
 	private static GameFrame gameFrame;
 	private static Vector<GraphicalPlate> platesToUpdate;
+	private static boolean gameLost;
 	public static void main(String[] args) 
 	{
 		//TODO DELETE these lines!!
@@ -65,13 +67,17 @@ public class GameBrain
                 System.err.println(ex.getMessage());
         }
         GlobalScreen.addNativeKeyListener(new NativeKeyListener() 
-        {	
+        {
 			@Override
 			public void nativeKeyTyped(NativeKeyEvent arg0)	{}
 			
 			@Override
 			public void nativeKeyReleased(NativeKeyEvent arg0) 
 			{
+				if (gameLost)
+				{
+					return;
+				}
 				if (gameFrame.isFocused())
 				{
 					switch (arg0.getKeyCode())
@@ -85,7 +91,7 @@ public class GameBrain
 						moveAll(MOVE_DOWN);
 						break;
 					case NativeKeyEvent.VC_LEFT:
-						System.out.println("Detected LEFT arrow press");
+						System.out.println("Detected left arrow press");
 						moveAll(MOVE_LEFT);
 						break;
 					case NativeKeyEvent.VC_RIGHT:
@@ -98,13 +104,36 @@ public class GameBrain
 					}
 				}
 				performPlateUpdates();
-				spawnPlate(10);
+				gameFrame.revalidateAll();
+				if ((moveHappened)&&isGameLost())
+				{
+					performGameLost();
+					return;
+				}
+				if (moveHappened)
+				{
+					spawnPlate(spawnAmount);
+				}
 				System.out.println("STEP DIVIDER");
 			}
-			
+
 			@Override
-			public void nativeKeyPressed(NativeKeyEvent arg0) {}
+			public void nativeKeyPressed(NativeKeyEvent arg0)	{}
+			
 		});
+        /*for(Thread thread : Thread.getAllStackTraces().keySet())
+        {
+        	if (thread.getName().equals("JNativeHook Hook Thread"))
+        	{
+        		thread.setDaemon(true);
+        	}
+        }*///TODO make dispatcher daemon!!
+	}
+	private static void performGameLost() 
+	{
+		gameLost = true;
+		spawnPlate(getFreePlace().size());
+		System.out.println("Game lost");
 	}
 	private static void performPlateUpdates()
 	{
@@ -121,10 +150,17 @@ public class GameBrain
 	}
 	private static void initGame()
 	{
-		size = preferencies.getGridSize();
-		gameFrame = new GameFrame(size);
-		spawnPlate(2);
+		readPreferencies();
+		gameFrame = new GameFrame(size, true);
+		spawnPlate(spawnAmount);
 		platesToUpdate = new Vector<GraphicalPlate>(0);
+	}
+	private static int size;
+	private static int spawnAmount;
+	private static void readPreferencies()
+	{
+		size = preferencies.getGridSize();
+		spawnAmount = preferencies.getSpawnAmount();
 	}
 	private static Preferencies loadPreferencies() throws ClassNotFoundException, FileNotFoundException, IOException
 	{
@@ -145,7 +181,6 @@ public class GameBrain
 		}
 		pref.save(f);
 	}
-	private static int size;
 	private static Vector<Point> getFreePlace()
 	{
 		Vector<Point> res = new Vector<Point>(0);
@@ -156,16 +191,18 @@ public class GameBrain
 				if (!gameFrame.hasPlateForPos(new Point(i, j)))
 				{
 					res.add(new Point(i, j));
+					//System.out.println("Adding free pos: " + new Point(i, j));
 				}
 			}
 		}
-		System.out.println("Free space left - " + res.size());
+		//System.out.println("Free space left - " + res.size() + ":" + res.toString());
 		return(res);
 	}
 	private static Random plateSpawnRandom;
 	private static Vector<Point> freePlace;
 	private static void spawnPlate(int howMuch)
 	{
+		System.out.println("Spawning plates");
 		for (int i=0; i<howMuch; i++)
 		{
 			freePlace = getFreePlace();
@@ -173,9 +210,11 @@ public class GameBrain
 			gameFrame.addPlate(2, GameFrame.getPointForPos(place)); //TODO define default begin worth
 			System.out.println("Placing plate on " + place.toString());
 		}
+		gameFrame.canvas.repaint();
 	}
 	private static boolean isBusy;
 	private static final Object busyMonitor = new Object();
+	private static boolean moveHappened; 
 	public static void moveAll(int move)
 	{
 		if (isBusy)
@@ -188,14 +227,137 @@ public class GameBrain
 			isBusy = true;
 		}
 		//TODO dodefine!
+		moveHappened = false;
 		int used;
 		GraphicalPlate plate;
 		GraphicalPlate prev = null;
 		switch (move)
 		{
-		case MOVE_LEFT:
-			break;
 		case MOVE_RIGHT:
+			for (int i=0; i<size; i++)
+			{
+				used = size-1;
+				prev = null;
+				for (int j=size-1; j>=0; j--)
+				{
+					try 
+					{
+						if (gameFrame.hasPlateForPos(new Point(j, i)))
+						{
+							plate = gameFrame.getPlateForPos(new Point(j, i));
+							if (prev != null)
+							{
+								if ((prev.getWorth() == plate.getWorth())&&(!prev.isUpdateScheduled()))
+								{
+									used++;
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+									}
+									prev.addUpdate(plate);
+									platesToUpdate.add(prev);
+									prev = null;
+								}
+								else
+								{
+									//System.out.println(plate);
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+									}
+									prev = plate;
+								}
+							}
+							else
+							{
+								//System.out.println(plate);
+								if (used != j)
+								{
+									plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+								}
+								prev = plate;
+							}
+							if (used != j)
+							{
+								moveHappened = true;
+							}
+							used--;
+						}
+					}
+					catch (IntersectsAnimationException e) 
+					{
+						e.printStackTrace();
+					}
+					catch (java.lang.NullPointerException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			
+			break;
+		case MOVE_LEFT:
+			for (int i=0; i<size; i++)
+			{
+				used = 0;
+				prev = null;
+				for (int j=0; j<size; j++)
+				{
+					try 
+					{
+						if (gameFrame.hasPlateForPos(new Point(j, i)))
+						{
+							plate = gameFrame.getPlateForPos(new Point(j, i));
+							if (prev != null)
+							{
+								if ((prev.getWorth() == plate.getWorth())&&(!prev.isUpdateScheduled()))
+								{
+									used--;
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+									}
+									prev.addUpdate(plate);
+									platesToUpdate.add(prev);
+									prev = null;
+								}
+								else
+								{
+									//System.out.println(plate);
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+									}
+									prev = plate;
+								}
+							}
+							else
+							{
+								//System.out.println(plate);
+								if (used != j)
+								{
+									plate.addAnimation(GameFrame.getPointForPos(new Point(used, i)));
+								}
+								prev = plate;
+							}
+							if (used != j)
+							{
+								moveHappened = true;
+							}
+							used++;
+						}
+					}
+					catch (IntersectsAnimationException e) 
+					{
+						e.printStackTrace();
+					}
+					catch (java.lang.NullPointerException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
 			break;
 		case MOVE_UP:
 			for (int i=0; i<size; i++)
@@ -214,7 +376,10 @@ public class GameBrain
 								if ((prev.getWorth() == plate.getWorth())&&(!prev.isUpdateScheduled()))
 								{
 									used--;
-									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									}
 									prev.addUpdate(plate);
 									platesToUpdate.add(prev);
 									prev = null;
@@ -222,15 +387,25 @@ public class GameBrain
 								else
 								{
 									//System.out.println(plate);
-									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									}
 									prev = plate;
 								}
 							}
 							else
 							{
 								//System.out.println(plate);
-								plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+								if (used != j)
+								{
+									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+								}
 								prev = plate;
+							}
+							if (used != j)
+							{
+								moveHappened = true;
 							}
 							used++;
 						}
@@ -263,7 +438,10 @@ public class GameBrain
 								if ((prev.getWorth() == plate.getWorth())&&(!prev.isUpdateScheduled()))
 								{
 									used++;
-									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									}
 									prev.addUpdate(plate);
 									platesToUpdate.add(prev);
 									prev = null;
@@ -271,15 +449,25 @@ public class GameBrain
 								else
 								{
 									//System.out.println(plate);
-									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									if (used != j)
+									{
+										plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+									}
 									prev = plate;
 								}
 							}
 							else
 							{
 								//System.out.println(plate);
-								plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+								if (used != j)
+								{
+									plate.addAnimation(GameFrame.getPointForPos(new Point(i, used)));
+								}
 								prev = plate;
+							}
+							if (used != j)
+							{
+								moveHappened = true;
 							}
 							used--;
 						}
@@ -300,13 +488,16 @@ public class GameBrain
 				throw(new IllegalArgumentException());
 		}
 		GameFrame.drawAnimations();
-		try
+		if (moveHappened)
 		{
-			Thread.sleep(GameFrame.getAnimationTimeMillis());
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
+			try
+			{
+				Thread.sleep(GameFrame.getAnimationTimeMillis());
+			}
+			catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
 		}
 		synchronized(busyMonitor)
 		{
@@ -315,7 +506,68 @@ public class GameBrain
 	}
 	public static boolean isGameLost()
 	{
-		return(getFreePlace().isEmpty());
+		if (getFreePlace().size() < spawnAmount)
+		{
+			return true;
+		}
+		GraphicalPlate a;
+		for (int i=0; i < size; i++)
+		{
+			for (int j = 0; j<size; j++)
+			{
+				if (gameFrame.hasPlateForPos(new Point(i, j)))
+				{
+					a = gameFrame.getPlateForPos(new Point(i, j));
+					if (gameFrame.hasPlateForPos(new Point(i, j-1)))
+					{
+						if(gameFrame.getPlateForPos(new Point(i, j-1)).getWorth() == a.getWorth())
+						{
+							return false;
+						}
+					}
+					if (gameFrame.hasPlateForPos(new Point(i, j+1)))
+					{
+						if(gameFrame.getPlateForPos(new Point(i, j+1)).getWorth() == a.getWorth())
+						{
+							return false;
+						}
+					}
+				}
+				else
+				{
+					return false;
+				}
+			}
+		}
+		for (int i=0; i < size; i++)
+		{
+			for (int j = 0; j<size; j++)
+			{
+				if (gameFrame.hasPlateForPos(new Point(j, i)))
+				{
+					a = gameFrame.getPlateForPos(new Point(j, i));
+					if (gameFrame.hasPlateForPos(new Point(j-1, i)))
+					{
+						if(gameFrame.getPlateForPos(new Point(j-1, i)).getWorth() == a.getWorth())
+						{
+							return false;
+						}
+					}
+					if (gameFrame.hasPlateForPos(new Point(j+1, i)))
+					{
+						if(gameFrame.getPlateForPos(new Point(j+1, i)).getWorth() == a.getWorth())
+						{
+							return false;
+						}
+					}
+				}
+				else
+				{
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 }
 class Preferencies implements Serializable
@@ -323,7 +575,8 @@ class Preferencies implements Serializable
 	private static final long serialVersionUID = 1L;
 	private static final int VERSION = 0;
 	private static final int STRING_VERSION = 1; 
-	private static final int GRID_SIZE = 2;
+	private static final int GRID_SIZE = 2; 
+	private static final int SPAWN_AMOUNT = 3;
 	
 	private LinkedHashMap<Integer, Object> data;
 	public Preferencies(int version, String stringVersion)
@@ -331,7 +584,8 @@ class Preferencies implements Serializable
 		this.data = new LinkedHashMap<Integer, Object>(0);
 		this.data.put(VERSION, version);
 		this.data.put(STRING_VERSION, stringVersion);
-		this.data.put(GRID_SIZE, 12); //TODO default value
+		this.data.put(GRID_SIZE, 10); //TODO default value
+		this.data.put(SPAWN_AMOUNT, 2); //TODO default value
 	}
 	public Preferencies (LinkedHashMap<Integer, Object> in)
 	{
@@ -344,6 +598,10 @@ class Preferencies implements Serializable
 	public void setGridSize(int gridSize) 
 	{
 		this.data.replace(GRID_SIZE, gridSize);
+	}
+	public int getSpawnAmount()
+	{
+		return (int)this.data.get(SPAWN_AMOUNT);
 	}
 	public void save (File f) throws IOException
 	{

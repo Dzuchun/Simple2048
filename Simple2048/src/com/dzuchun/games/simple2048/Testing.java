@@ -5,7 +5,7 @@ public class Testing {
 	public static void main(String[] args) 
 	{
 		ResourceLoader.load();
-		GameFrame a = new GameFrame(5);
+		GameFrame a = new GameFrame(5, true);
 		GraphicalPlate b = new GraphicalPlate(2);
 		/*try
 		{
